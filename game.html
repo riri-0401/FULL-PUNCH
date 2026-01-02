@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Full Punch</title>
+<style>
+html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; font-family:Arial, sans-serif; }
+#backgroundVideo { position: fixed; inset:0; width:100%; height:100%; object-fit:cover; z-index:-2; }
+#darkOverlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:-1; }
+.section { position:absolute; inset:0; display:none; justify-content:center; align-items:center; flex-direction:column; text-align:center; color:white; }
+.section.active { display:flex; }
+h1 { font-size:3em; margin-bottom:20px; text-shadow:2px 2px 6px black; }
+button { padding:15px 25px; margin:10px; font-size:1.2em; border:none; border-radius:12px; cursor:pointer; background: linear-gradient(135deg,#ff1493,#ff69b4); color:white; font-weight:bold; box-shadow:0 6px 12px rgba(0,0,0,0.4); }
+button:hover { transform:scale(1.05); }
+#instructions { margin-top:15px; background:#ffe4f0; color:#c71585; padding:15px 20px; width:90%; max-width:600px; border-radius:10px; cursor:pointer; overflow:hidden; max-height:50px; transition:max-height 0.4s ease; text-align:left; line-height:1.4em; font-size:0.9em; }
+#instructions.expanded { max-height:60vh; overflow-y:auto; }
+#instructions::-webkit-scrollbar { width:6px; }
+#instructions::-webkit-scrollbar-thumb { background:#ff69b4; border-radius:4px; }
+.playerSelectBtn { padding:15px 25px; margin:10px; font-size:1.2em; border-radius:12px; border:none; cursor:pointer; background: linear-gradient(135deg,#ff1493,#ff69b4); color:white; }
+#gameContainer { width:100%; height:100%; display:flex; flex-direction:column; align-items:center; }
+#gameInfo { display:flex; width:100%; max-width:900px; margin:10px; }
+.infoBox { flex:1; background:rgba(0,0,0,0.6); margin:5px; padding:10px; border-radius:10px; font-weight:bold; font-size:1em; }
+#gameArea { flex:1; width:100%; max-width:900px; position:relative; border:4px solid #ff69b4; border-radius:15px; display:flex; justify-content:center; align-items:center; background:rgba(255,255,255,0.05); box-shadow:0 0 20px rgba(255,105,180,0.5) inset; }
+#itemDisplay img { width:160px; height:160px; transition: transform 0.2s; max-width:40vw; max-height:40vw; }
+#pauseIcon { position:absolute; top:10px; left:50%; transform:translateX(-50%); background:#ff1493; width:50px; height:50px; display:flex; justify-content:center; align-items:center; cursor:pointer; font-weight:bold; color:white; font-size:24px; box-shadow:0 0 10px #ff69b4; border-radius:10px; }
+#frenzyLabel { position:absolute; top:80px; color:yellow; font-size:28px; display:none; animation:pulse 0.6s infinite; }
+@keyframes pulse { 0%{transform:scale(1);} 50%{transform:scale(1.2);} 100%{transform:scale(1);} }
+#flash { position:absolute; inset:0; background:transparent; pointer-events:none; z-index:10; transition:opacity 0.15s; }
+.player { position:absolute; width:130px; border:2px solid #ff69b4; border-radius:10px; padding:5px; display:none; text-align:center; font-size:0.9em; }
+#player1{top:10px;left:10px;background:#7a3db8;}
+#player2{bottom:10px;left:10px;background:#ff8c00;}
+#player3{top:10px;right:10px;background:#1437ff;}
+#player4{bottom:10px;right:10px;background:#008b8b;}
+.score{font-size:18px; margin:5px 0;}
+.punchBtn{width:100%;border:none;padding:8px;color:white;font-weight:bold;cursor:pointer; font-size:0.9em; border-radius:8px;}
+#btn0{background:#8d14ff;}
+#btn1{background:#ff8c00;}
+#btn2{background:#312df7;}
+#btn3{background:#008b8b;}
+#pauseMenu { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); display:none; justify-content:center; align-items:center; flex-direction:column; z-index:20; color:white; text-align:center; padding:20px; border-radius:15px; min-width:250px; }
+#pauseMenu h2 { font-size:2em; margin-bottom:20px; text-shadow: 2px 2px 6px #ff1493; }
+#pauseMenu button { width:150px; padding:10px 0; margin:10px; font-size:1em; border-radius:12px; border:none; cursor:pointer; font-weight:bold; background: linear-gradient(135deg,#ff1493,#ff69b4); color:white; box-shadow:0 6px 12px rgba(0,0,0,0.5); transition: transform 0.2s, box-shadow 0.2s; }
+#pauseMenu button:hover { transform: scale(1.05); box-shadow:0 0 20px #ff69b4, 0 0 30px #ff1493; }
+#gameOverMenu { position:absolute; inset:0; background: rgba(0,0,0,0.85); display:none; justify-content:center; align-items:center; flex-direction:column; z-index:30; color:white; text-align:center; font-family: 'Arial', sans-serif; }
+#gameOverMenu h2 { font-size:3em; margin-bottom:20px; color:#ffea00; text-shadow:2px 2px 5px black; animation: glowFloat 1s ease-in-out infinite alternate; }
+@keyframes glowFloat { 0% { text-shadow: 0 0 5px #ffea00, 0 0 10px #ffea00; transform: translateY(0); } 100% { text-shadow: 0 0 20px #ffea00, 0 0 40px #ffea00; transform: translateY(-10px); } }
+#gameOverMenu button { width:180px; padding:15px 0; margin:12px; font-size:1.2em; border-radius:12px; border:none; cursor:pointer; font-weight:bold; background: linear-gradient(135deg,#ff1493,#ff69b4); color:white; box-shadow:0 6px 12px rgba(0,0,0,0.5); transition: transform 0.2s, box-shadow 0.2s; }
+#gameOverMenu button:hover { transform: scale(1.05); box-shadow:0 0 20px #ff69b4,0 0 30px #ff1493; }
+@media (max-width:600px){ h1{font-size:2em;} button{font-size:1em; padding:12px 20px;} .score{font-size:16px;} #itemDisplay img{max-width:50vw; max-height:50vw;} }
+</style>
+</head>
+<body>
+
+<video autoplay muted loop id="backgroundVideo">
+    <source src="background.mp4" type="video/mp4">
+</video>
+<div id="darkOverlay"></div>
+
+<!-- AUDIO -->
+<audio id="bgMusic" src="background_music.mp3" loop></audio>
+<audio id="clickSound" src="click.mp3"></audio>
+<audio id="punchSound" src="punch.mp3"></audio>
+<audio id="winnerSound" src="winner.mp3"></audio>
+<audio id="frenzySound" src="frenzy.mp3" loop></audio>
+
+<div id="flash"></div>
+
+<!-- MENU -->
+<div id="menu" class="section active">
+    <h1>Full Punch</h1>
+    <button onclick="goPlayerSelect()">START GAME</button>
+    <div id="instructions" onclick="toggleInstructions()">
+        <strong>How to Play</strong>
+        <p>🎰 Items spin rapidly in the center.</p>
+        <p>⏳ When spinning stops, players PUNCH!</p>
+        <p>🍎 Punch a fresh fruit → +1 point</p>
+        <p>💀 Punch a rotten fruit → -1 point</p>
+        <p>💣 Punch a bomb → -2 points</p>
+        <p>👥 Each player has their own punch button/key</p>
+        <p>⌨️ Keyboard controls: Q, S, P, K</p>
+        <p>⚡ FRENZY MODE in last 10 seconds</p>
+    </div>
+</div>
+
+<!-- PLAYER SELECT -->
+<div id="playerSelect" class="section">
+    <h1>Select Players</h1>
+    <button class="playerSelectBtn" onclick="selectPlayers(2)">2 Players</button>
+    <button class="playerSelectBtn" onclick="selectPlayers(3)">3 Players</button>
+    <button class="playerSelectBtn" onclick="selectPlayers(4)">4 Players</button>
+</div>
+
+<!-- GAME -->
+<div id="game" class="section">
+    <div id="gameContainer">
+        <div id="gameInfo">
+            <div class="infoBox">⏱ <span id="timer">30</span></div>
+            <div class="infoBox" id="predictionList"></div>
+        </div>
+        <div id="gameArea">
+            <div id="itemDisplay"><img id="itemImage"></div>
+            <div id="pauseIcon" onclick="togglePause()">⏸</div>
+            <div id="frenzyLabel">FRENZY MODE!</div>
+            <div id="players">
+                <div id="player1" class="player">P1<div class="score" id="score0">0</div><button id="btn0" class="punchBtn">PUNCH</button></div>
+                <div id="player2" class="player">P2<div class="score" id="score1">0</div><button id="btn1" class="punchBtn">PUNCH</button></div>
+                <div id="player3" class="player">P3<div class="score" id="score2">0</div><button id="btn2" class="punchBtn">PUNCH</button></div>
+                <div id="player4" class="player">P4<div class="score" id="score3">0</div><button id="btn3" class="punchBtn">PUNCH</button></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pause Menu -->
+<div id="pauseMenu">
+    <h2>PAUSED</h2>
+    <button onclick="resumeGame()">RESUME</button>
+</div>
+
+<!-- Game Over Menu -->
+<div id="gameOverMenu">
+    <h2 id="winnerText">Winner: P1</h2>
+    <button onclick="playAgain()">PLAY AGAIN</button>
+    <button onclick="backToMenu()">EXIT</button>
+</div>
+
+<script>
+// AUDIO
+const bgMusic = document.getElementById('bgMusic');
+const clickSound = document.getElementById('clickSound');
+const punchSound = document.getElementById('punchSound');
+const winnerSound = document.getElementById('winnerSound');
+const frenzySound = document.getElementById('frenzySound');
+bgMusic.volume = 0.5;
+
+// PLAY MUSIC ON FIRST MENU CLICK
+let musicStarted = false;
+document.getElementById('menu').addEventListener('click', () => {
+    if(!musicStarted){ bgMusic.play().catch(()=>{}); musicStarted = true; }
+});
+function click(){ clickSound.currentTime=0; clickSound.play(); }
+
+// NAVIGATION
+function showSection(id){ 
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active')); 
+    document.getElementById(id).classList.add('active'); 
+    click(); 
+}
+function goPlayerSelect(){ showSection('playerSelect'); }
+function toggleInstructions(){ document.getElementById('instructions').classList.toggle('expanded'); click(); }
+
+// GAME LOGIC
+const items=[{type:'fruit',src:'banana.png'},{type:'fruit',src:'mango.png'},{type:'fruit',src:'watermelon.png'},
+             {type:'rotten',src:'rottenBanana.png'},{type:'rotten',src:'rottenMango.png'},{type:'rotten',src:'rottenWatermelon.png'},
+             {type:'bomb',src:'bomb.png'}];
+let scores=[0,0,0,0], activePlayers=2, gameRunning=false, canPunch=false;
+let currentItemType=null, timeLeft=30, timerInterval, sequenceQueue=[];
+const flash=document.getElementById('flash');
+const gameOverMenu=document.getElementById('gameOverMenu');
+const winnerText=document.getElementById('winnerText');
+const frenzyLabel=document.getElementById('frenzyLabel');
+const predictionList=document.getElementById('predictionList');
+let paused=false;
+let spinIntervalId = null;
+
+// PLAYER SELECT
+function selectPlayers(n){
+    activePlayers=n;
+    showSection('game');
+    for(let i=0;i<4;i++) document.getElementById('player'+(i+1)).style.display=i<n?'block':'none';
+    generatePredictionList();
+    startGame();
+}
+
+// PREDICTION LIST
+function generatePredictionList(){
+    sequenceQueue=[];
+    for(let i=0;i<10;i++){
+        sequenceQueue.push(items[Math.floor(Math.random()*items.length)]);
+    }
+    updatePrediction();
+}
+function updatePrediction(){
+    const c={fruit:0,rotten:0,bomb:0};
+    sequenceQueue.forEach(i=>c[i.type]++);
+    predictionList.textContent=`Fruit ${c.fruit}  Rotten ${c.rotten}  Bomb ${c.bomb}`;
+}
+
+// START GAME
+function startGame(){
+    clearInterval(timerInterval);
+    gameRunning=true; scores=[0,0,0,0];
+    document.querySelectorAll('.score').forEach(s=>s.textContent=0);
+    timeLeft=30; paused=false;
+    timerInterval=setInterval(()=>{
+        if(!paused && gameRunning){
+            timeLeft--; document.getElementById('timer').textContent=timeLeft;
+            if(timeLeft<=10){ frenzyLabel.style.display='block'; if(frenzySound.paused){ frenzySound.currentTime=0; frenzySound.play(); } }
+            if(timeLeft<=0){ clearInterval(timerInterval); endGame(); }
+        }
+    },1000);
+    spinNextItem();
+}
+
+// SPIN ITEM
+function spinNextItem(){
+    if(!gameRunning) return;
+    if(sequenceQueue.length===0) generatePredictionList();
+    canPunch=false;
+    const nextItem = sequenceQueue.shift();
+    currentItemType = nextItem.type;
+    const stopDuration = 600;
+    let spins = 20;
+
+    spinIntervalId = setInterval(()=>{
+        if(paused) return;
+        document.getElementById('itemImage').src = items[Math.floor(Math.random()*items.length)].src;
+        spins--;
+        if(spins <= 0){
+            clearInterval(spinIntervalId);
+            document.getElementById('itemImage').src = nextItem.src;
+            canPunch = true;
+            updatePrediction();
+            if(gameRunning && sequenceQueue.length>0 && !paused) setTimeout(spinNextItem, stopDuration);
+        }
+    }, timeLeft<=10?100:160);
+}
+
+// PUNCH
+function punch(i){
+    if(!canPunch || i>=activePlayers || !gameRunning) return;
+    canPunch=false; punchSound.currentTime=0; punchSound.play();
+    let color;
+    if(currentItemType==='fruit'){ scores[i]++; color='#00ff00'; }
+    else if(currentItemType==='rotten'){ scores[i]--; color='#ff0000'; }
+    else { scores[i]-=2; color='#ffff00'; }
+    document.getElementById('score'+i).textContent=scores[i];
+    flashPunch(color);
+}
+function flashPunch(color){ flash.style.background=color; flash.style.opacity='0.5'; setTimeout(()=>{ flash.style.opacity='0'; },150); }
+
+['btn0','btn1','btn2','btn3'].forEach((b,i)=>document.getElementById(b).onclick=()=>punch(i));
+document.addEventListener('keydown',e=>{ const map=['KeyQ','KeyS','KeyP','KeyK']; const idx=map.indexOf(e.code); if(idx>=0) punch(idx); });
+
+// PAUSE
+function togglePause(){
+    if(!gameRunning) return;
+    paused=!paused;
+    document.getElementById('pauseMenu').style.display = paused?'flex':'none';
+    if(paused) clearInterval(spinIntervalId);
+    else spinNextItem();
+}
+function resumeGame(){ paused=false; document.getElementById('pauseMenu').style.display='none'; spinNextItem(); }
+function backToMenu(){ 
+    paused=false; 
+    gameRunning=false; 
+    clearInterval(timerInterval); 
+    clearInterval(spinIntervalId);
+    showSection('menu'); 
+    frenzySound.pause(); frenzySound.currentTime=0;
+    gameOverMenu.style.display='none'; 
+    document.getElementById('pauseMenu').style.display='none';
+}
+
+// END GAME
+function endGame(){
+    gameRunning=false; frenzySound.pause(); frenzySound.currentTime=0;
+    let max=Math.max(...scores.slice(0,activePlayers));
+    let winnerIndices=[];
+    scores.slice(0,activePlayers).forEach((s,i)=>{ if(s===max) winnerIndices.push(i+1); });
+    winnerText.textContent='Winner: '+winnerIndices.join(', ');
+    gameOverMenu.style.display='flex';
+}
+function playAgain(){ gameOverMenu.style.display='none'; selectPlayers(activePlayers); }
+
+</script>
+</body>
+</html>
